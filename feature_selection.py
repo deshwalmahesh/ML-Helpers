@@ -17,50 +17,38 @@ class ClassFeatSel():
 
         assert use_type in ['base','linear','support_vector', 'tree','all'], "provide suitable value for 'use_type'. See Docs"
 
-        feature_imp = pd.DataFrame(np.zeros(len(column_names)),index=column_names) 
+        feature_imp = pd.DataFrame(index=column_names) 
 
-        def base_model(X_train,y_train,column_names,feature_imp,with_0=False):
+        def base_model(X_train,y_train,column_names,feature_imp):
             from sklearn.linear_model import LogisticRegression
             clf = LogisticRegression().fit(X_train,y_train)
             feature_imp['Logistic Reg'] = clf.coef_.ravel()
-            if with_0:
-                return feature_imp
-            else:
-                return feature_imp.drop(0,axis=1)
+            return feature_imp
 
 
-        def svc_model(X_train,y_train,column_names,feature_imp,with_0=False):
+        def svc_model(X_train,y_train,column_names,feature_imp):
             from sklearn.svm import LinearSVC
             from sklearn.linear_model import SGDClassifier
             clf = LinearSVC().fit(X_train,y_train)
             feature_imp['Support Vector'] = clf.coef_.ravel()
-            if with_0:
-                return feature_imp
-            else:
-                return feature_imp.drop(0,axis=1) 
+            return feature_imp
 
 
-        def linear_model(X_train,y_train,column_names,feature_imp,with_0=False):
+        def linear_model(X_train,y_train,column_names,feature_imp):
             from sklearn.linear_model import SGDClassifier
             clf = SGDClassifier().fit(X_train,y_train)
             feature_imp['Linear SGD'] = clf.coef_.ravel()
-            if with_0:
-                return feature_imp
-            else:
-                return feature_imp.drop(0,axis=1)
+            return feature_imp
 
 
-        def trees_model(X_train,y_train,column_names,feature_imp,with_0=
-                        False):
+        def trees_model(X_train,y_train,column_names,feature_imp):
             from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
             tree = [('Random Forest',RandomForestClassifier()),('Extra Tree',ExtraTreesClassifier())]
             for tup in tree:
                 clf = tup[1].fit(X_train,y_train)
                 feature_imp[tup[0]] = clf.feature_importances_
-            if with_0:
-                return feature_imp
-            else:
-                return feature_imp.drop(0,axis=1)
+            
+            return feature_imp
 
 
         def run_all(X_train,y_train,column_names,feature_imp):
@@ -69,10 +57,10 @@ class ClassFeatSel():
             possible classification models such as Logistic Reg, SVM, Trees etc
             '''
             features = base_model(X_train,y_train,column_names,feature_imp,True)
-            features.merge(linear_model(X_train,y_train,column_names,feature_imp,True),on=0)
-            features.merge(svc_model(X_train,y_train,column_names,feature_imp,True),on=0)
-            features.merge(trees_model(X_train,y_train,column_names,feature_imp,True),on=0)
-            return features.drop(0,axis=1)
+            features.join(linear_model(X_train,y_train,column_names,feature_imp,True))
+            features.join(svc_model(X_train,y_train,column_names,feature_imp,True))
+            features.join(trees_model(X_train,y_train,column_names,feature_imp,True))
+            return features
 
         if use_type == 'base':
             return base_model(X_train,y_train,column_names,feature_imp)
@@ -191,39 +179,30 @@ class RegFeatSel():
 
         assert use_type in ['base','linear','tree','all'], "provide suitable value for 'use_type'. See Docs"
 
-        feature_imp = pd.DataFrame(np.zeros(len(column_names)),index=column_names) 
+        feature_imp = pd.DataFrame(index=column_names) 
 
-        def base_model(X_train,y_train,column_names,feature_imp,with_0=False):
+        def base_model(X_train,y_train,column_names,feature_imp):
             import statsmodels.api as sm
             X_train = sm.add_constant(X_train)
             model = sm.OLS(y_train,X_train).fit()
             feature_imp['OLS p-values '] = model.pvalues[1:]
-            if with_0:
-                return feature_imp
-            else:
-                return feature_imp.drop(0,axis=1)
+            return feature_imp
         
         
-        def linear_model(X_train,y_train,column_names,feature_imp,with_0=False):
+        def linear_model(X_train,y_train,column_names,feature_imp):
             from sklearn.linear_model import Lasso
             model = Lasso().fit(X_train,y_train)
             feature_imp['Lasso Regression'] = model.coef_.ravel()
-            if with_0:
-                return feature_imp
-            else:
-                return feature_imp.drop(0,axis=1)
+            return feature_imp
 
 
-        def trees_model(X_train,y_train,column_names,feature_imp,with_0=False):
+        def trees_model(X_train,y_train,column_names,feature_imp):
             from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
             tree = [('Random Forest',RandomForestRegressor()),('Extra Tree',ExtraTreesRegressor())]
             for tup in tree:
                 model = tup[1].fit(X_train,y_train)
                 feature_imp[tup[0]] = model.feature_importances_
-            if with_0:
-                return feature_imp
-            else:
-                return feature_imp.drop(0,axis=1)
+            return feature_imp
 
 
         def run_all(X_train,y_train,column_names,feature_imp):
@@ -232,9 +211,9 @@ class RegFeatSel():
             possible regression models such as Lasso Reg, Trees etc
             '''
             features = base_model(X_train,y_train,column_names,feature_imp,True)
-            features.merge(linear_model(X_train,y_train,column_names,feature_imp,True),on=0)
-            features.merge(trees_model(X_train,y_train,column_names,feature_imp,True),on=0)
-            return features.drop(0,axis=1)
+            features.join(linear_model(X_train,y_train,column_names,feature_imp,True))
+            features.join(trees_model(X_train,y_train,column_names,feature_imp,True))
+            return features
 
         if use_type=='base':
             return base_model(X_train,y_train,column_names,feature_imp)
@@ -310,3 +289,96 @@ class RegFeatSel():
             scores = mutual(X_train,y_train,column_names,transform=False)
             scores['F Score'] = f_score(X_train,y_train,column_names,transform=False).values
             return scores
+        
+        
+
+class BasicTest():
+    '''
+    class to implement basic tests for feature selections like Variance threshold, Variance Inflation Factor etc
+    '''
+    def var_thresh_based(self,df_x,label_col,transform=False,threshold=0):
+        '''
+        method to find and get the features which have variance more than a threshold
+        args:
+            df_x: pandas dataframe. df should be raw. No standardisation or scaling should be in the df
+            label_col: target y column name {optional}
+            thresh: float. return the columns which have variance greater than this after transformation  
+        out:
+            pandas series with variances of individual columns
+            transformed numpy array {if transform=True} WITHOUT 'label_col'
+        '''
+        from sklearn.feature_selection import VarianceThreshold
+        
+        y=df_x[label_col].values
+        df = df_x.drop(label_col,axis=1)
+        assert type(df)==pd.core.frame.DataFrame, "'df' should be a Pandas DataFrame"
+        
+        scores = pd.DataFrame(df.var(),columns=['Variance'])
+        model = VarianceThreshold(threshold=threshold).fit(df,y)
+        if transform:
+            return (scores,model.transform(df))
+        else:
+            return scores
+        
+        
+    def var_inflation(self,df_raw,label_col,thresh=5,transform=False):
+        '''
+        method to perform the variance threshold analysis on a given Pandas Dataframe. For more information 
+        google 'variance_inflation_factor'
+        args:
+            df_raw: pandas dataframe {raw df without scaling or standardization}
+            thresh: threshold to drop the columns
+                    thresh <= 1 : not correlated
+                    1 <thresh< 5 : moderately correlated
+                    thresh> 5 :    highly correlated
+            transform: {optional} whether to drop the columns based on the threshold
+            
+        out:
+            score: pandas dataframe showing Variance Inflation Factors of different columns
+            transformed Dataframe with dropped columns
+        '''
+        
+        from statsmodels.stats.outliers_influence import variance_inflation_factor as VIF
+        
+        df = df_raw.drop(label_col,axis=1)
+        assert type(df)==pd.core.frame.DataFrame, "'df' should be a Pandas DataFrame"
+        
+        vif = pd.DataFrame(index=df.columns)
+        vif["VIF Factor"] = [VIF(df.values, i) for i in range(df.shape[1])]
+        if transform:
+            return (vif,df.loc[:,(vif['VIF Factor']>thresh).values])
+        else:
+            return vif
+        
+    
+    def correlation(self,df,label_col,method='pearson',transform=False,thresh=0.10):
+        '''
+        method to find the columns which columns have most correlation with the target label
+        args:
+            df: pandas datafrme WITHOUT normalized,scaled or Standardized
+            label_col: name of target column
+            method: any one from 'pearson', 'kendall', 'spearman'
+            transform: whether to return transformed dataframe with less columns
+            thresh: drop the columns which have a correlation value less than threshold
+        out:
+            corr: pandas series with correlation value of each column to target_col
+            dataframe: transformed dataframe with less columns
+        '''
+        if transform:
+            assert thresh>0, "provide a value of 'thresh' > 0 with 'transform=True'"
+            
+        corr = df.corr(method=method)[label_col].drop(label_col).rename(label_col+' Corr')
+        if transform:
+            return (corr,df.drop(label_col,axis=1).loc[:,abs(corr)>thresh])
+        else:
+            return corr
+        
+        
+    def get_all(self,df,label_col):
+        '''
+        apply all of the 'var_thresh_based', 'var_inflation' and 'correlation' without transformation
+        '''
+        result = self.var_thresh_based(df,label_col)
+        result = result.join(self.var_inflation(df,label_col))
+        result = result.join(self.correlation(df,label_col))
+        return result
