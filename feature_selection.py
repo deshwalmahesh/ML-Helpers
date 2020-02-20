@@ -91,7 +91,7 @@ class ClassFeatSel():
       
     
     
-    def stat_test(self,X_train,y_train,column_names,method='all',transform=False,num_feat=1):
+    def univariate_test(self,X_train,y_train,column_names,method='all',transform=False,num_feat=1):
     
         '''
         method to get the contribution of attributes towards the final 'target' for classification problem
@@ -171,7 +171,7 @@ class ClassFeatSel():
             return scores
      
     
-    
+
 class RegFeatSel():
     '''
     class to find the feature importance and selection feature selections
@@ -183,32 +183,43 @@ class RegFeatSel():
             X_train: numpy array of attributes
             y_train: 'target' or classes column
             column_names: list of names of all the columns that are present in X_train
-            use_type: {string} 'base' for Lasso, 'tree' for ExtraTree and RandomForest, 'all' for all the above
+            use_type: {string} 'base' for OLS,'linear' for Lasso, 'tree' for ExtraTree and RandomForest, 'all' for 
+            all the above
         out:
             dataframe displaying importances of all the columns
         '''
 
-        assert use_type in ['base','tree','all'], "provide suitable value for 'use_type'. See Docs"
+        assert use_type in ['base','linear','tree','all'], "provide suitable value for 'use_type'. See Docs"
 
         feature_imp = pd.DataFrame(np.zeros(len(column_names)),index=column_names) 
 
         def base_model(X_train,y_train,column_names,feature_imp,with_0=False):
+            import statsmodels.api as sm
+            X_train = sm.add_constant(X_train)
+            model = sm.OLS(y_train,X_train).fit()
+            feature_imp['OLS p-values '] = model.pvalues[1:]
+            if with_0:
+                return feature_imp
+            else:
+                return feature_imp.drop(0,axis=1)
+        
+        
+        def linear_model(X_train,y_train,column_names,feature_imp,with_0=False):
             from sklearn.linear_model import Lasso
-            clf = Lasso().fit(X_train,y_train)
-            feature_imp['Lasso Regression'] = clf.coef_.ravel()
+            model = Lasso().fit(X_train,y_train)
+            feature_imp['Lasso Regression'] = model.coef_.ravel()
             if with_0:
                 return feature_imp
             else:
                 return feature_imp.drop(0,axis=1)
 
 
-
         def trees_model(X_train,y_train,column_names,feature_imp,with_0=False):
             from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
             tree = [('Random Forest',RandomForestRegressor()),('Extra Tree',ExtraTreesRegressor())]
             for tup in tree:
-                clf = tup[1].fit(X_train,y_train)
-                feature_imp[tup[0]] = clf.feature_importances_
+                model = tup[1].fit(X_train,y_train)
+                feature_imp[tup[0]] = model.feature_importances_
             if with_0:
                 return feature_imp
             else:
@@ -221,11 +232,15 @@ class RegFeatSel():
             possible regression models such as Lasso Reg, Trees etc
             '''
             features = base_model(X_train,y_train,column_names,feature_imp,True)
+            features.merge(linear_model(X_train,y_train,column_names,feature_imp,True),on=0)
             features.merge(trees_model(X_train,y_train,column_names,feature_imp,True),on=0)
             return features.drop(0,axis=1)
 
-        if use_type == 'base':
+        if use_type=='base':
             return base_model(X_train,y_train,column_names,feature_imp)
+        
+        if use_type == 'linear':
+            return linear_model(X_train,y_train,column_names,feature_imp)
 
         elif use_type == 'tree':
             return trees_model(X_train,y_train,column_names,feature_imp)
@@ -235,7 +250,7 @@ class RegFeatSel():
       
     
     
-    def stat_test(self,X_train,y_train,column_names,method='both',transform=False,num_feat=1):
+    def univariate_test(self,X_train,y_train,column_names,method='both',transform=False,num_feat=1):
     
         '''
         method to get the contribution of attributes towards the final 'target' for Regression problem
