@@ -1,3 +1,9 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
 class ClassFeatSel():
     '''
     class to find the feature importance and selection feature selections
@@ -382,3 +388,101 @@ class BasicTest():
         result = result.join(self.var_inflation(df,label_col))
         result = result.join(self.correlation(df,label_col))
         return result
+    
+    
+    
+class F_B_R_Selection():
+    '''
+    Implement Forward, Backward or Recursive Feature Selection
+    NOTE: Data should be scaled for some processes
+    '''
+    def __init__(self,problem,model_type='base'):
+        '''
+        constructor of the class
+        args:
+            problem: 'regression'/ 'classification'
+            model: 'base', 'support_vector','tree','ensemble'
+        '''
+        
+        self.problem = problem
+        assert self.problem in ['regression','classification'], "'problem' should be either 'regression' or 'classification'"
+        try:
+            from mlxtend.feature_selection import SequentialFeatureSelector as SFS
+        except ModuleNotFoundError:
+            !pip install mlxtend
+            from mlxtend.feature_selection import SequentialFeatureSelector as SFS
+        
+        
+        if self.problem =='classification': # if classification
+            if model_type=='base':
+                from sklearn.linear_model import LogisticRegression
+                self.model = LogisticRegression()
+            elif model_type=='linear':
+                from sklearn.svm import LinearSVC
+                self.model = LinearSVC()
+            elif model_type =='tree':
+                from sklearn.ensemble import RandomForestClassifier
+                self.model = RandomForestClassifier()
+            elif model_type == 'ensemble':
+                from sklearn.ensemble import ExtraTreesClassifier
+                self.model = ExtraTreesClassifier()
+        
+        else: # if problem is regression
+            if model_type =='base':
+                from sklearn.linear_model import Lasso
+                self.model = Lasso()
+            elif model_type =='linear':
+                from sklearn.svm import LinearSVR
+                self.model = LinearSVR()
+            elif model_type =='tree':
+                from sklearn.ensemble import RandomForestRegressor
+                self.model = RandomForestRegressor()
+            elif model_type == 'ensemble':
+                from sklearn.ensemble import ExtraTreesRegressor
+                self.model = ExtraTreesRegressor()
+         
+        
+        
+        
+    def execute(self,X,y,n_features,selection_type='forward',scoring=None,transform=False):
+        '''
+        perform Forward feature selection for the data given
+        NOTE: X should be Scaled for some models as it might fail to converge
+        args:
+            X: Features dataframe
+            y: label column
+            n_features: final number of features
+            selection_type: 'forward','backward','step','recursive'
+            model: 'base', 'support_vector','tree','ensemble'
+            scoring: {string,callable,method} optional
+            transform: whether to return a transformed dataframe
+        out: 
+            names of n selected features is 'transform' is False
+            transformed array with n selected features if transform is True
+        '''
+        assert type(X)==pd.core.frame.DataFrame, "'X' should be a Pandas DataFrame"
+        from mlxtend.feature_selection import SequentialFeatureSelector as SFS
+        
+        
+        if selection_type == 'recursive':
+            from sklearn.feature_selection import RFE
+            sfs = RFE(self.model,n_features).fit(X,y)
+            selected = sfs.support_
+            selected = X.loc[:,selected.tolist()].columns.tolist()
+        
+        
+        else:
+        
+            if selection_type == 'forward':
+                sfs = SFS(self.model,n_features,forward=True,scoring=scoring,floating=False).fit(X,y)
+            elif selection_type =='backward':
+                sfs = SFS(self.model,n_features,forward=False,scoring=scoring,floating=False).fit(X,y)
+            elif selection_type == 'step':
+                sfs = SFS(self.model,n_features,forward=False,scoring=scoring,floating=True).fit(X,y)   
+            
+            selected = sfs.k_feature_names_
+        
+        if transform:
+            return sfs.transform(X)
+        else:
+            return selected          
