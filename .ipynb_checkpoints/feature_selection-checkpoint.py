@@ -364,6 +364,7 @@ class BasicTest():
             corr: pandas series with correlation value of each column to target_col
             dataframe: transformed dataframe with less columns
         '''
+        assert True, "Wrong Implementation"
         if transform:
             assert thresh>0, "provide a value of 'thresh' > 0 with 'transform=True'"
             
