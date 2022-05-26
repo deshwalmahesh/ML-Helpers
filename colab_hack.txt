@@ -1,0 +1,6 @@
+# Just add the below code to CONSOLE of your browser while using Colab to get around with 10-15 minutes timeout. Now you can got and do other work
+
+
+run_buttons = document.getElementsByTagName('colab-run-button')
+var keepAliveInterval = setInterval(() => { run_buttons[run_buttons.length-1].click() ; }, 15 * 60 * 1000);
+setTimeout(() => { clearInterval(keepAliveInterval) }, 24 * 60 * 60 * 1000);
